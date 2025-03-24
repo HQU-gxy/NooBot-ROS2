@@ -1,0 +1,6 @@
+SUBSYSTEM!="tty", GOTO="fuck"
+
+ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", SYMLINK+="ttyNooBot"
+ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", SYMLINK+="ttyLidar"
+
+LABEL="fuck"

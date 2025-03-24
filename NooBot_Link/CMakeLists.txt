@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(hugetank_link)
+project(noobot_link)
 
 if(NOT CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 11)
@@ -30,17 +30,13 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(std_msgs REQUIRED)
-# find_package(wheeltec_robot_msg REQUIRED)                         # CHANGE
-find_package(serial REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Position.msg"
- )
 
+add_subdirectory(lib/serial)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -56,17 +52,15 @@ endif()
 include_directories(
   include
 )
-set(wheeltec_robot_node_SRCS
-  src/wheeltec_robot.cpp
-  src/Quaternion_Solution.cpp
-)
 
-add_executable(wheeltec_robot_node src/wheeltec_robot.cpp src/Quaternion_Solution.cpp)
-ament_target_dependencies(wheeltec_robot_node tf2_ros tf2 tf2_geometry_msgs rclcpp std_msgs nav_msgs std_srvs sensor_msgs serial  turtlesim)
+add_executable(noobot_node src/NooBot.cpp)
+ament_target_dependencies(noobot_node tf2_ros tf2 tf2_geometry_msgs rclcpp std_msgs nav_msgs std_srvs sensor_msgs turtlesim)
+target_include_directories(noobot_node PUBLIC include/noobot)
+target_link_libraries(noobot_node serial)
 
 
 install(TARGETS
-wheeltec_robot_node
+noobot_node
 
 DESTINATION lib/${PROJECT_NAME}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
@@ -75,7 +69,7 @@ DESTINATION lib/${PROJECT_NAME}
 )
 
 install(
-  DIRECTORY launch config
+  DIRECTORY launch config urdf
   DESTINATION share/${PROJECT_NAME}
 )
 ament_package()
