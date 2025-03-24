@@ -1,0 +1,3 @@
+[submodule "NooBot_Link/lib/serial"]
+	path = NooBot_Link/lib/serial
+	url = https://github.com/crosstyan/serial
