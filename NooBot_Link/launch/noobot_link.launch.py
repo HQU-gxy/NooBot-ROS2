@@ -40,24 +40,11 @@ def generate_launch_description():
                 "serial_port": "/dev/ttyNooBot",
                 "serial_baud_rate": 115200,
                 "odom_topic": "odom",
-                "odom_frame_id": "odom",
+                "odom_frame_id": "odom_filtered",
                 "base_frame_id": "base_footprint",
                 "gyro_frame_id": "gyro_link",
             }
         ],
-    )
-
-    base_to_gyro = launch_ros.actions.Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        name="base_to_gyro",
-        arguments=["0", "0", "0", "0", "0", "0", "base_footprint", "gyro_link"],
-    )
-
-    joint_state_publisher_node = launch_ros.actions.Node(
-        package="joint_state_publisher",
-        executable="joint_state_publisher",
-        name="joint_state_publisher",
     )
 
     lidar_driver = IncludeLaunchDescription(
@@ -71,11 +58,8 @@ def generate_launch_description():
     )
 
     ld = LaunchDescription()
-
     ld.add_action(bot_model)
     ld.add_action(link_node)
-    ld.add_action(base_to_gyro)
-    ld.add_action(joint_state_publisher_node)
     ld.add_action(imu_filter_node)
     ld.add_action(ekf_node)
     ld.add_action(lidar_driver)

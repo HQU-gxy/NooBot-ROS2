@@ -136,11 +136,6 @@ int main(int argc, char *argv[])
     LaserScan scan;
     if (laser.doProcessSimple(scan))
     {
-
-      printf("Scan received [%lu] points scanFreq [%.02f]\n",
-             scan.points.size(),
-             scan.scanFreq);
-
       auto scan_msg = std::make_shared<sensor_msgs::msg::LaserScan>();
 
       scan_msg->header.stamp.sec = RCL_NS_TO_S(scan.stamp);

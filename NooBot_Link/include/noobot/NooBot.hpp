@@ -6,13 +6,11 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/time.hpp"
 
-#include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 
 #include "tf2/LinearMath/Quaternion.h"
-#include "tf2_ros/transform_broadcaster.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include "serial/serial.h"
 
@@ -61,18 +59,14 @@ private:
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmdVelSubsriber;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odomPublisher;
     rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imuPublisher;
-    std::unique_ptr<tf2_ros::TransformBroadcaster> tfBroadcaster;
 
     rclcpp::Time lastUpdateOdomTime;
-    rclcpp::Time lastUpdateIMUTime;
 
     static constexpr auto READ_STATUS_PERIOD = std::chrono::milliseconds(50);
 
     float positionX = 0;
     float positionY = 0;
     float orientation = 0;
-
-    float angles[3]{0};
 
     struct __attribute__((packed)) IMUData
     {
@@ -97,7 +91,7 @@ private:
         uint8_t checksum;
     };
 
-    void updateOdom(const float currentLinear, const float currentAngular)
+    void updateOdom(float currentLinear, float currentAngular)
     {
         auto timeNow = rclcpp::Node::now();
         auto duration = (timeNow - lastUpdateOdomTime).seconds();
@@ -112,11 +106,6 @@ private:
         odomMsg.header.stamp = timeNow;
         odomMsg.header.frame_id = odomFrameId;
 
-        geometry_msgs::msg::TransformStamped transformMsg;
-        transformMsg.header.stamp = timeNow;
-        transformMsg.header.frame_id = odomFrameId;
-        transformMsg.child_frame_id = baseFrameId;
-
         // Set the position and velocity
         odomMsg.pose.pose.position.x = positionX;
         odomMsg.pose.pose.position.y = positionY;
@@ -124,9 +113,6 @@ private:
         odomMsg.child_frame_id = baseFrameId;
         odomMsg.twist.twist.linear.x = currentLinear;
         odomMsg.twist.twist.angular.z = currentAngular;
-
-        transformMsg.transform.translation.x = positionX;
-        transformMsg.transform.translation.y = positionY;
 
         // Use different covariance matrices depending on whether the bot is moving or not
         if (currentAngular == 0 && currentAngular == 0)
@@ -144,57 +130,47 @@ private:
         tf2::Quaternion q;
         q.setRPY(0, 0, orientation);
         auto quatMsg = tf2::toMsg(q);
-
         odomMsg.pose.pose.orientation = quatMsg;
-        transformMsg.transform.rotation = quatMsg;
 
         odomPublisher->publish(odomMsg);
-        tfBroadcaster->sendTransform(transformMsg);
 
         lastUpdateOdomTime = timeNow;
     }
 
     void updateIMUData(const IMUData &imuData)
     {
-        auto timeNow = rclcpp::Node::now();
-        auto duration = (timeNow - lastUpdateIMUTime).seconds();
-
-        angles[0] += imuData.gyroX * duration;
-        angles[1] += imuData.gyroY * duration;
-        angles[2] += imuData.gyroZ * duration;
-
-        sensor_msgs::msg::Imu imuMsg; // Instantiate IMU topic data //实例化IMU话题数据
-        imuMsg.header.stamp = timeNow;
+        sensor_msgs::msg::Imu imuMsg;
+        imuMsg.header.stamp = rclcpp::Node::now();
         imuMsg.header.frame_id = gyroFrameId;
 
         // Angular velocity
-        imuMsg.angular_velocity.x = imuData.gyroX;
+        imuMsg.angular_velocity.x = -imuData.gyroX; // It's inverted
         imuMsg.angular_velocity.y = imuData.gyroY;
-        imuMsg.angular_velocity.z = imuData.gyroZ;
-
-        // Set the orientation in quaternion form
-        tf2::Quaternion q;
-        q.setRPY(angles[0], angles[1], angles[2]);
-        imuMsg.orientation = tf2::toMsg(q);
+        imuMsg.angular_velocity.z = -imuData.gyroZ; // It's inverted
 
         // Magic numbers
         imuMsg.angular_velocity_covariance[0] = 1e6;
         imuMsg.angular_velocity_covariance[4] = 1e6;
         imuMsg.angular_velocity_covariance[8] = 1e-6;
-        imuMsg.orientation_covariance[0] = 1e6;
-        imuMsg.orientation_covariance[4] = 1e6;
-        imuMsg.orientation_covariance[8] = 1e-6;
 
         // Acceleration
-        imuMsg.linear_acceleration.x = imuData.accelX;
+        imuMsg.linear_acceleration.x = -imuData.accelX; // It's inverted
         imuMsg.linear_acceleration.y = imuData.accelY;
-        imuMsg.linear_acceleration.z = imuData.accelZ;
+        imuMsg.linear_acceleration.z = -imuData.accelZ; // It's inverted
         imuPublisher->publish(imuMsg);
-
-        lastUpdateOdomTime = timeNow;
     }
 
-    void checkForStatus()
+    static uint8_t calcSum(const uint8_t *buf, size_t len)
+    {
+        uint8_t sum = 0;
+        for (uint8_t i = 0; i < len; i++)
+        {
+            sum ^= buf[i];
+        }
+        return sum;
+    }
+
+    void checkForStatus0()
     {
         if (!botSerial.available())
             return;
@@ -223,22 +199,34 @@ private:
                 }
                 else
                 {
-                    RCLCPP_WARN(get_logger(), "Link checksum error: %d, %d", sum, parsed->checksum);
+                    RCLCPP_WARN(get_logger(), "Link checksum error: %02x, %02x", sum, parsed->checksum);
                 }
             }
         }
-
-        botSerial.flushInput();
     }
 
-    static uint8_t calcSum(const uint8_t *buf, size_t len)
+    void checkForStatus()
     {
-        uint8_t sum = 0;
-        for (uint8_t i = 0; i < len; i++)
+        if (botSerial.available() && botSerial.read()[0] == 0x69)
         {
-            sum ^= buf[i];
+            BotStatusData readData;
+            botSerial.read(reinterpret_cast<uint8_t *>(&readData) + 1, sizeof(BotStatusData) - 1);
+            uint8_t sum = 0;
+            for (uint8_t i = 0; i < sizeof(BotStatusData) - 1; i++)
+            {
+                sum ^= reinterpret_cast<uint8_t *>(&readData)[i];
+            }
+
+            if (sum != readData.checksum)
+            {
+                RCLCPP_WARN(get_logger(), "Link checksum error: %02x, %02x", sum, readData.checksum);
+                return;
+            }
+
+            updateOdom(readData.currentLinear, readData.currentAngular);
+            updateIMUData(readData.imu);
+            botSerial.flushInput();
         }
-        return sum;
     }
 
     void sendCmd(const float linear, const float angular)
@@ -287,10 +275,8 @@ public:
         this->get_parameter("base_frame_id", baseFrameId);
         this->get_parameter("gyro_frame_id", gyroFrameId); // IMU topics correspond to TF coordinates //IMU话题对应TF坐标
 
-        odomPublisher = create_publisher<nav_msgs::msg::Odometry>("odom", 2);  // Create the odometer topic publisher //创建里程计话题发布者
+        odomPublisher = create_publisher<nav_msgs::msg::Odometry>("odom", 2);      // Create the odometer topic publisher //创建里程计话题发布者
         imuPublisher = create_publisher<sensor_msgs::msg::Imu>("imu/data_raw", 2); // Create an IMU topic publisher //创建IMU话题发布者
-        tfBroadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-
         cmdVelSubsriber = create_subscription<geometry_msgs::msg::Twist>(
             "/cmd_vel", 2, [this](geometry_msgs::msg::Twist msg)
             { sendCmd(msg); });
@@ -299,7 +285,7 @@ public:
         {
             botSerial.setPort(serialPortPath);
             botSerial.setBaudrate(baudrate);
-            auto timeout = serial::Timeout::simpleTimeout(20);
+            auto timeout = serial::Timeout::simpleTimeout(200);
             botSerial.setTimeout(timeout);
             botSerial.open();
         }
@@ -319,7 +305,6 @@ public:
         }
 
         lastUpdateOdomTime = rclcpp::Node::now();
-        lastUpdateIMUTime = rclcpp::Node::now();
 
         checkStatusTimer = this->create_wall_timer(READ_STATUS_PERIOD, [this]
                                                    { checkForStatus(); });
