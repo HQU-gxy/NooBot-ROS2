@@ -210,7 +210,13 @@ private:
         if (botSerial.available() && botSerial.read()[0] == 0x69)
         {
             BotStatusData readData;
-            botSerial.read(reinterpret_cast<uint8_t *>(&readData) + 1, sizeof(BotStatusData) - 1);
+            auto readsize = botSerial.read(reinterpret_cast<uint8_t *>(&readData) + 1, sizeof(BotStatusData) - 1);
+
+            if (readsize != sizeof(BotStatusData) - 1)
+            {
+                RCLCPP_WARN(get_logger(), "Unexpected end of data");
+                return;
+            }
             uint8_t sum = 0;
             for (uint8_t i = 0; i < sizeof(BotStatusData) - 1; i++)
             {
@@ -261,8 +267,8 @@ private:
 public:
     NooBot() : Node("noobot_link")
     {
-        this->declare_parameter<int>("baudrate", 115200);
-        this->declare_parameter<std::string>("serial_port", "/dev/ttyNooBot");
+        this->declare_parameter<int>("serial_baud_rate", 115200);
+        this->declare_parameter<std::string>("serial_port", "/dev/ttyUSB0");
         this->declare_parameter<std::string>("odom_topic", "odom");
         this->declare_parameter<std::string>("odom_frame_id", "odom");
         this->declare_parameter<std::string>("base_frame_id", "base_link");
@@ -275,12 +281,6 @@ public:
         this->get_parameter("base_frame_id", baseFrameId);
         this->get_parameter("gyro_frame_id", gyroFrameId); // IMU topics correspond to TF coordinates //IMU话题对应TF坐标
 
-        odomPublisher = create_publisher<nav_msgs::msg::Odometry>("odom", 2);      // Create the odometer topic publisher //创建里程计话题发布者
-        imuPublisher = create_publisher<sensor_msgs::msg::Imu>("imu/data_raw", 2); // Create an IMU topic publisher //创建IMU话题发布者
-        cmdVelSubsriber = create_subscription<geometry_msgs::msg::Twist>(
-            "/cmd_vel", 2, [this](geometry_msgs::msg::Twist msg)
-            { sendCmd(msg); });
-
         try
         {
             botSerial.setPort(serialPortPath);
@@ -288,6 +288,7 @@ public:
             auto timeout = serial::Timeout::simpleTimeout(200);
             botSerial.setTimeout(timeout);
             botSerial.open();
+            botSerial.flushInput();
         }
         catch (serial::IOException &e)
         {
@@ -303,6 +304,12 @@ public:
             RCLCPP_ERROR(this->get_logger(), "Failed to open serial port");
             exit(1);
         }
+
+        odomPublisher = create_publisher<nav_msgs::msg::Odometry>("odom", 2);      // Create the odometer topic publisher //创建里程计话题发布者
+        imuPublisher = create_publisher<sensor_msgs::msg::Imu>("imu/data_raw", 2); // Create an IMU topic publisher //创建IMU话题发布者
+        cmdVelSubsriber = create_subscription<geometry_msgs::msg::Twist>(
+            "/cmd_vel", 2, [this](geometry_msgs::msg::Twist msg)
+            { sendCmd(msg); });
 
         lastUpdateOdomTime = rclcpp::Node::now();
 
