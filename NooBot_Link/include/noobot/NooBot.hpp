@@ -91,6 +91,12 @@ private:
         uint8_t checksum;
     };
 
+    /**
+     * @brief Update the position and publish odom msg
+     *
+     * @param currentLinear Current linear velocity of the bot in m/s
+     * @param currentLinear Current angular velocity of the bot in rad/s
+     */
     void updateOdom(float currentLinear, float currentAngular)
     {
         auto timeNow = rclcpp::Node::now();
@@ -137,6 +143,11 @@ private:
         lastUpdateOdomTime = timeNow;
     }
 
+    /**
+     * @brief Publish IMU msg
+     *
+     * @param imuData IMU data with linear acceleration and angular velocity of the bot
+     */
     void updateIMUData(const IMUData &imuData)
     {
         sensor_msgs::msg::Imu imuMsg;
@@ -160,16 +171,27 @@ private:
         imuPublisher->publish(imuMsg);
     }
 
-    static uint8_t calcSum(const uint8_t *buf, size_t len)
+    /**
+     * @brief Calculate the 'sum' by XOR
+     *
+     * @param data The pointer to the data
+     * @param len The length of the data
+     *
+     * @return The 'sum' of the data in 1 byte
+     */
+    static uint8_t calcSum(const uint8_t *data, size_t len)
     {
         uint8_t sum = 0;
         for (uint8_t i = 0; i < len; i++)
         {
-            sum ^= buf[i];
+            sum ^= data[i];
         }
         return sum;
     }
 
+    /**
+     * @brief Check if the bot has sent valid status data here
+     */
     void checkForStatus()
     {
         if (botSerial.available() && botSerial.read()[0] == 0x69)
@@ -182,15 +204,11 @@ private:
                 RCLCPP_WARN(get_logger(), "Unexpected end of data");
                 return;
             }
-            uint8_t sum = 0;
-            for (uint8_t i = 0; i < sizeof(BotStatusData) - 1; i++)
-            {
-                sum ^= reinterpret_cast<uint8_t *>(&readData)[i];
-            }
 
-            if (sum != readData.checksum)
+            auto sum = calcSum(reinterpret_cast<uint8_t *>(&readData), sizeof(BotStatusData));
+            if (sum != 0) // It's XOR, so the checksum should be 0
             {
-                RCLCPP_WARN(get_logger(), "Link checksum error: %02x, %02x", sum, readData.checksum);
+                RCLCPP_WARN(get_logger(), "Link checksum error: %02x", sum);
                 return;
             }
 
@@ -200,6 +218,12 @@ private:
         }
     }
 
+    /**
+     * @brief Send velocity command to the bot
+     *
+     * @param linear Linear velocity in m/s
+     * @param linear Angular velocity in rad/s
+     */
     void sendCmd(const float linear, const float angular)
     {
         struct __attribute__((packed)) UpLinkCommand
@@ -224,6 +248,11 @@ private:
         }
     }
 
+    /**
+     * @brief Send velocity command to the bot
+     *
+     * @param msg Twist msg with linear.x and angular.z
+     */
     void sendCmd(const geometry_msgs::msg::Twist &msg)
     {
         sendCmd(static_cast<float>(msg.linear.x), static_cast<float>(msg.angular.z));
