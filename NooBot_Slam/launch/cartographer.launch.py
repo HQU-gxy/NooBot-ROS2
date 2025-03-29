@@ -36,7 +36,7 @@ def generate_launch_description():
                     "-configuration_basename",
                     configuration_basename,
                 ],
-                remappings=[("odom", "odom"), ("imu", "/imu/data")],
+                remappings=[("odom", "odometry/filtered"), ("imu", "/imu/data")],
             ),
             Node(
                 package="cartographer_ros",

@@ -64,8 +64,6 @@ private:
 
     static constexpr auto READ_STATUS_PERIOD = std::chrono::milliseconds(50);
 
-    float positionX = 0;
-    float positionY = 0;
     float orientation = 0;
 
     struct __attribute__((packed)) IMUData
@@ -102,19 +100,10 @@ private:
         auto timeNow = rclcpp::Node::now();
         auto duration = (timeNow - lastUpdateOdomTime).seconds();
 
-        // Calculate the bot's position and orientation
-        positionX += currentLinear * cos(currentAngular) * duration;
-        positionY += currentLinear * sin(currentAngular) * duration;
-        orientation += currentAngular * duration;
-
         // Prepare the odom msg
         nav_msgs::msg::Odometry odomMsg;
         odomMsg.header.stamp = timeNow;
         odomMsg.header.frame_id = odomFrameId;
-
-        // Set the position and velocity
-        odomMsg.pose.pose.position.x = positionX;
-        odomMsg.pose.pose.position.y = positionY;
 
         odomMsg.child_frame_id = baseFrameId;
         odomMsg.twist.twist.linear.x = currentLinear;
@@ -133,6 +122,7 @@ private:
         }
 
         // Set the orientation in quaternion form
+        orientation += currentAngular * duration;
         tf2::Quaternion q;
         q.setRPY(0, 0, orientation);
         auto quatMsg = tf2::toMsg(q);

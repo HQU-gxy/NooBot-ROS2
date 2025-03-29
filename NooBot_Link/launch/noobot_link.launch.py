@@ -28,7 +28,6 @@ def generate_launch_description():
         executable="ekf_node",
         name="ekf_filter_node",
         parameters=[ekf_config],
-        remappings=[("/odometry/filtered", "odom_filtered")],
     )
 
     link_node = launch_ros.actions.Node(
@@ -40,7 +39,7 @@ def generate_launch_description():
                 "serial_port": "/dev/ttyNooBot",
                 "serial_baud_rate": 115200,
                 "odom_topic": "odom",
-                "odom_frame_id": "odom_filtered",
+                "odom_frame_id": "odom",
                 "base_frame_id": "base_footprint",
                 "gyro_frame_id": "gyro_link",
             }
