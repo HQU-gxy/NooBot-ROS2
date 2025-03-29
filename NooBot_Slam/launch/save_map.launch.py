@@ -5,7 +5,7 @@ from launch import LaunchDescription
 from launch.actions import ExecuteProcess
 import launch_ros.actions
 
-share_dir = get_package_share_directory("noobot_sla")
+share_dir = get_package_share_directory("noobot_slam")
 map_dir = os.path.join(share_dir, "map", "fucked_map")
 
 

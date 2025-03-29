@@ -4,7 +4,7 @@
   <name>noobot_link</name>
   <version>0.0.0</version>
   <description>ROS2 down-link for NooBot</description>
-  <maintainer email="dc_redstone@outlook.com">I</maintainer>
+  <maintainer email="dc_redstone@outlook.com">redstonee</maintainer>
   <license>WTFPL</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
