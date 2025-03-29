@@ -3,9 +3,9 @@
 <package format="3">
   <name>noobot_link</name>
   <version>0.0.0</version>
-  <description>ROS2 downLink for HugeTank</description>
-  <maintainer email="stupid@ass.hole">I</maintainer>
-  <license>TODO: License declaration</license>
+  <description>ROS2 down-link for NooBot</description>
+  <maintainer email="dc_redstone@outlook.com">I</maintainer>
+  <license>WTFPL</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

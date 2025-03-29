@@ -170,41 +170,6 @@ private:
         return sum;
     }
 
-    void checkForStatus0()
-    {
-        if (!botSerial.available())
-            return;
-
-        uint8_t buf[96];
-        auto readSize = botSerial.read(buf, sizeof(buf));
-
-        for (size_t i = 0; i < readSize; i++)
-        {
-            // Not enough bytes
-            if (readSize - i < static_cast<int>(sizeof(BotStatusData)))
-            {
-                RCLCPP_WARN(get_logger(), "Unexpected end of data");
-                break;
-            }
-            // Find the header byte
-            if (buf[i] == 0x69)
-            {
-                auto parsed = reinterpret_cast<BotStatusData *>(buf + i);
-                auto sum = calcSum(buf + i, sizeof(BotStatusData) - 1);
-                if (sum == parsed->checksum)
-                {
-                    updateOdom(parsed->currentLinear, parsed->currentAngular);
-                    updateIMUData(parsed->imu);
-                    return;
-                }
-                else
-                {
-                    RCLCPP_WARN(get_logger(), "Link checksum error: %02x, %02x", sum, parsed->checksum);
-                }
-            }
-        }
-    }
-
     void checkForStatus()
     {
         if (botSerial.available() && botSerial.read()[0] == 0x69)
