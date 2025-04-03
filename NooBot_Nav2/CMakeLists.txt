@@ -35,7 +35,7 @@ endif()
 # Install
 ################################################################################
 install(
-  DIRECTORY launch map param rviz bt
+  DIRECTORY launch config bt
   DESTINATION share/${PROJECT_NAME}
 )
 

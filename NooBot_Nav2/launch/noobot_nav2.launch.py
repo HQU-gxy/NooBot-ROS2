@@ -9,8 +9,12 @@ from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
 
-    noobot_launch_dir = os.path.join(get_package_share_directory("noobot_link"), "launch")
-    nav2_bringup_launch_dir = os.path.join(get_package_share_directory("nav2_bringup"), "launch")
+    noobot_launch_dir = os.path.join(
+        get_package_share_directory("noobot_link"), "launch"
+    )
+    nav2_bringup_launch_dir = os.path.join(
+        get_package_share_directory("nav2_bringup"), "launch"
+    )
 
     noobot_nav_dir = get_package_share_directory("noobot_nav2")
     param_dir = os.path.join(noobot_nav_dir, "config")
@@ -18,12 +22,10 @@ def generate_launch_description():
         "params", default=os.path.join(param_dir, "nav2_params.yaml")
     )
 
-    noobot_slam_dir = get_package_share_directory("noobot_nav2")
-    map_dir = os.path.join(noobot_slam_dir, "map")
+    noobot_slam_dir = get_package_share_directory("noobot_slam")
     map_file = LaunchConfiguration(
-        "map", default=os.path.join(map_dir, "fucking_map.yaml")
+        "map", default=os.path.join(noobot_slam_dir, "map", "fucked_map.yaml")
     )
-
 
     return LaunchDescription(
         [
@@ -48,10 +50,12 @@ def generate_launch_description():
                 ),
             ),
             IncludeLaunchDescription(
-                PythonLaunchDescriptionSource([nav2_bringup_launch_dir, "/bringup_launch.py"]),
+                PythonLaunchDescriptionSource(
+                    [nav2_bringup_launch_dir, "/bringup_launch.py"]
+                ),
                 launch_arguments={
                     "map": map_file,
-                    "use_sim_time": False,
+                    "use_sim_time": "false",
                     "params_file": param_file,
                 }.items(),
             ),

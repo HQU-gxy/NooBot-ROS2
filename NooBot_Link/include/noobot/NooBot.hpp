@@ -226,7 +226,6 @@ private:
             .targetLinear = linear,
             .targetAngular = angular};
 
-        RCLCPP_INFO(this->get_logger(), "Sending cmd: %f, %f", linear, angular);
         cmd.checksum = calcSum(reinterpret_cast<const uint8_t *>(&cmd), sizeof(cmd) - 1);
         try
         {
