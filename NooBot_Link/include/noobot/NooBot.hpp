@@ -248,6 +248,9 @@ private:
     }
 
 public:
+    /**
+     * @brief Constructor for the NooBot class
+     */
     NooBot() : Node("noobot_link")
     {
         this->declare_parameter<int>("serial_baud_rate", 115200);
@@ -262,7 +265,7 @@ public:
         this->get_parameter("odom_topic", odomTopic);
         this->get_parameter("odom_frame_id", odomFrameId);
         this->get_parameter("base_frame_id", baseFrameId);
-        this->get_parameter("gyro_frame_id", gyroFrameId); // IMU topics correspond to TF coordinates //IMU话题对应TF坐标
+        this->get_parameter("gyro_frame_id", gyroFrameId);
 
         try
         {
@@ -288,16 +291,16 @@ public:
             exit(1);
         }
 
-        odomPublisher = create_publisher<nav_msgs::msg::Odometry>("odom", 2);      // Create the odometer topic publisher //创建里程计话题发布者
-        imuPublisher = create_publisher<sensor_msgs::msg::Imu>("imu/data_raw", 2); // Create an IMU topic publisher //创建IMU话题发布者
+        odomPublisher = create_publisher<nav_msgs::msg::Odometry>("odom", 2);
+        imuPublisher = create_publisher<sensor_msgs::msg::Imu>("imu/data_raw", 2);
         cmdVelSubsriber = create_subscription<geometry_msgs::msg::Twist>(
             "/cmd_vel", 2, [this](geometry_msgs::msg::Twist msg)
             { sendCmd(msg); });
 
         lastUpdateOdomTime = rclcpp::Node::now();
 
-        checkStatusTimer = this->create_wall_timer(READ_STATUS_PERIOD, [this]
-                                                   { checkForStatus(); });
+        checkStatusTimer = create_wall_timer(READ_STATUS_PERIOD, [this]
+                                             { checkForStatus(); });
     }
 
     ~NooBot()
