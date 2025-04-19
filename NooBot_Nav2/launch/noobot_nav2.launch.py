@@ -19,7 +19,7 @@ def generate_launch_description():
     noobot_nav_dir = get_package_share_directory("noobot_nav2")
     param_dir = os.path.join(noobot_nav_dir, "config")
     param_file = LaunchConfiguration(
-        "params", default=os.path.join(param_dir, "nav2_params.yaml")
+        "params", default=os.path.join(param_dir, "nav2_params_smac2d_rpp.yaml")
     )
 
     noobot_slam_dir = get_package_share_directory("noobot_slam")
